@@ -131,7 +131,7 @@ function createQuizBoxContent() {
   quizWord = Array.from(word.toUpperCase(), (item) => {
     const letter = createCustomElement(wordLetterObject);
     // letter.textContent = item;
-    letter.style.width = `calc((100% / ${word.length}) - (2rem / ${word.length}))`;
+    letter.style.width = `calc((100% / ${wordLength}) - (2rem / ${wordLength}))`;
     quizBox.boxWord.append(letter);
     return letter;
   });
@@ -177,10 +177,6 @@ function updateHint() {
 function keyAction(e) {
   e.preventDefault();
 
-  if(e?.ctrlKey) {
-    console.log(e);
-  };
-
   const letter = e.target?.dataset?.letter || e.key.toUpperCase();
 
   const isContains = word.toUpperCase().includes(letter);
@@ -222,6 +218,11 @@ function keyAction(e) {
       if (incorrectGuesses === maxGuesses) {
         showModal(false);
       };
+    };
+  } else {
+    if (e?.key === 'Enter' && !isGame) {
+      resetGame();
+      startHangmanGame();
     };
   };
 };
