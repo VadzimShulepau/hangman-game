@@ -2,6 +2,44 @@ import { createCustomElement } from './createCustomElement.js';
 import { questionsList } from './questionsList.js';
 // console.log('Hangman');
 let inbox = null;
+let isGame = false;
+let usedKeys = [];
+let word = '';
+let hint = '';
+let alphabet = Array.from({ length: 26 }, (item, i) => {
+  let index = i + 65;
+  return item = String.fromCharCode(index);
+});
+// for (let i = 65; i < 91; i++) {
+//   alphabet.push(String.fromCharCode(i));
+// };
+
+let quizWord = [];
+let incorrectGuesses = 0;
+let keyboard = null;
+let wordLength = null;
+const maxGuesses = 6;
+const gallowsImages = [
+  { img: 'images/gallows.svg', alt: 'gallows image' },
+  { img: 'images/head.svg', alt: 'head image', cls: 'head-image' },
+  { img: 'images/body.svg', alt: 'body image', cls: 'body-image' },
+  { img: 'images/hand-one.svg', alt: 'hand one image', cls: 'hand-one-image' },
+  { img: 'images/hand-two.svg', alt: 'hand two image', cls: 'hand-two-image' },
+  { img: 'images/leg-one.svg', alt: 'leg one image', cls: 'leg-one-image' },
+  { img: 'images/leg-two.svg', alt: 'leg two image', cls: 'leg-two-image' },
+];
+
+const { mainClass, gallowsBoxClass, quizBoxClass, modalBoxClass } = {
+  mainClass: 'hangman-game',
+  quizBoxClass: 'quiz-box',
+  gallowsBoxClass: 'gallows-box',
+  modalBoxClass: 'modal-box',
+};
+
+let container = null;
+let hangmanGame = null;
+let quizBox = {};
+let gallowsBox = {};
 
 export function initHangmanGame(box) {
   inbox = box;
@@ -9,51 +47,43 @@ export function initHangmanGame(box) {
 };
 
 function startHangmanGame() {
+  console.log('Start')
+  // resetGame();
 
-  inbox.innerHTML = '';
-
-  const classesNames = {
-    mainClass: 'hangman-game',
-    quizBoxClass: 'quiz-box',
-    gallowsBoxClass: 'gallows-box',
-    modalBoxClass: 'modal-box',
-  };
-
-  const container = createCustomElement({ tag: 'section', tagClass: 'container' });
-  const hangmanGame = createCustomElement({ tag: 'main', tagClass: classesNames.mainClass });
-
-  let incorrectGuesses = 0;
-  const maxGuesses = 6;
-
-  const gallowsImages = [
-    { img: 'images/gallows.svg', alt: 'gallows image' },
-    { img: 'images/head.svg', alt: 'head image', cls: 'head-image' },
-    { img: 'images/body.svg', alt: 'body image', cls: 'body-image' },
-    { img: 'images/hand-one.svg', alt: 'hand one image', cls: 'hand-one-image' },
-    { img: 'images/hand-two.svg', alt: 'hand two image', cls: 'hand-two-image' },
-    { img: 'images/leg-one.svg', alt: 'leg one image', cls: 'leg-one-image' },
-    { img: 'images/leg-two.svg', alt: 'leg two image', cls: 'leg-two-image' },
-  ];
+  isGame = true;
 
   function getRandomIndex() {
     return Math.floor(Math.random() * questionsList.length);
   };
 
   const index = getRandomIndex();
-  const { hint, word } = questionsList[index];
+  hint = questionsList[index].hint;
+  word = questionsList[index].word;
+  wordLength = word.length;
 
-  createGallowsBoxContent(classesNames, hangmanGame, gallowsImages);
-  createQuizBoxContent(classesNames, hangmanGame, gallowsImages, maxGuesses, incorrectGuesses, hint, word);
+  container = createCustomElement({ tag: 'section', tagClass: 'container' });
+  hangmanGame = createCustomElement({ tag: 'main', tagClass: mainClass });
+
+  createGallowsBoxContent();
+  createQuizBoxContent();
 
   container.append(hangmanGame);
   inbox.append(container);
+  inbox.addEventListener('keydown', keyAction);
+};
+
+function resetGame() {
+  inbox.innerHTML = '';
+  inbox.removeEventListener('keydown', keyAction);
+  usedKeys = [];
+  incorrectGuesses = 0;
+  isGame = false;
 };
 
 //gallows box
-function createGallowsBoxContent(classesNames, hangmanGame, gallowsImages) {
-  const { mainClass, gallowsBoxClass } = classesNames;
+function createGallowsBoxContent() {
 
-  const gallowsBox = {
+  gallowsBox = {
     gallowsImage: createCustomElement({ tag: 'div', tagClass: `${gallowsBoxClass}__gallows-image` }),
     titleH1: createCustomElement({ tag: 'h1', tagClass: `${gallowsBoxClass}__title` }),
   };
@@ -76,24 +106,15 @@ function createGallowsBoxContent(classesNames, hangmanGame, gallowsImages) {
 };
 
 
-function createQuizBoxContent(classesNames, hangmanGame, gallowsImages, maxGuesses, incorrectGuesses, hint, word) {
+function createQuizBoxContent() {
   console.log(word)
-  const { mainClass, quizBoxClass } = classesNames;
-
   const gameQuizBox = createCustomElement({ tag: 'section', tagClass: `${mainClass}__${quizBoxClass}` });
 
-  const alphabet = [];
-  for (let i = 65; i < 91; i++) {
-    alphabet.push(String.fromCharCode(i));
-  };
-
-  let wordLength = word.length;
-
-  const quizBox = {
+  quizBox = {
     boxWord: createCustomElement({ tag: 'ul', tagClass: `${quizBoxClass}__word` }),
     hint: createCustomElement({ tag: 'p', tagClass: `${quizBoxClass}__hint-box` }),
     guess: createCustomElement({ tag: 'p', tagClass: `${quizBoxClass}__guess-box` }),
-    lettersBox: createCustomElement({ tag: 'div', tagClass: `${quizBoxClass}__keyboard-box` }),
+    keyboardBox: createCustomElement({ tag: 'div', tagClass: `${quizBoxClass}__keyboard-box` }),
   };
 
   const wordLetterObject = {
@@ -107,7 +128,7 @@ function createQuizBoxContent(classesNames, hangmanGame, gallowsImages, maxGuess
     },
   };
 
-  const quizWord = Array.from(word.toUpperCase(), (item) => {
+  quizWord = Array.from(word.toUpperCase(), (item) => {
     const letter = createCustomElement(wordLetterObject);
     // letter.textContent = item;
     letter.style.width = `calc((100% / ${word.length}) - (2rem / ${word.length}))`;
@@ -115,79 +136,98 @@ function createQuizBoxContent(classesNames, hangmanGame, gallowsImages, maxGuess
     return letter;
   });
 
-  function updateGuesses(incorrectGuesses) {
-    quizBox.guess.innerHTML = `Incorrect guesses: <span>${incorrectGuesses}</span> / <span>${maxGuesses}</span>`;
-  };
-  updateGuesses(incorrectGuesses);
-
-  function updateHint(hint) {
-    quizBox.hint.innerHTML = `Hint: <span>${hint}</span>`;
-  };
-  updateHint(hint);
-
-  for (let item in quizBox) {
-    gameQuizBox.append(quizBox[item]);
-  };
-
   const keyItemObject = {
     tag: 'button',
     tagClass: `${quizBoxClass}__key ${quizBoxClass}__button ${mainClass}__button`,
     elType: 'button',
     listener: {
       type: 'click',
-      action: function keyAction(e) {
-        e.preventDefault();
-        e.target.removeEventListener('click', keyAction);
-        e.target.classList.add('key--select');
-        e.target.setAttribute('disabled', true);
-
-        const isContains = word.toUpperCase().includes(e.target.dataset.letter);
-        const letter = e.target.dataset.letter;
-
-        if (isContains) {
-
-         [...word.toUpperCase()].forEach((item, i) => {
-
-            if (item === letter) {
-              quizWord[i].innerText = item;
-              quizWord[i].classList.remove('word-letter--hidden');
-
-
-              wordLength -= 1;
-              if (wordLength < 1) {
-                showModal(classesNames, hangmanGame, word, true);
-              };
-            };
-          });
-
-        } else {
-          incorrectGuesses += 1;
-          updateGuesses(incorrectGuesses);
-
-          hangmanGame.querySelector('.gallows-box__gallows-image').append(createCustomElement({ tag: 'div', tagClass: gallowsImages[incorrectGuesses].cls }));
-
-          if (incorrectGuesses === maxGuesses) {
-            showModal(classesNames, hangmanGame, word, false);
-          };
-        };
-      },
+      action: keyAction,
     },
   };
 
-  const keyboard = Array.from(alphabet, (item) => {
+  // quizBox.keyboardBox.innerHtml = '';
+
+  keyboard = Array.from(alphabet, (item) => {
     const key = createCustomElement(keyItemObject);
     key.innerText = item;
     key.dataset.letter = item;
-    quizBox.lettersBox.append(key);
+    quizBox.keyboardBox.append(key);
     return key;
   });
+
+  updateGuesses();
+  updateHint();
+
+  for (let item in quizBox) {
+    gameQuizBox.append(quizBox[item]);
+  };
 
   hangmanGame.append(gameQuizBox);
 };
 
+function updateGuesses() {
+  quizBox.guess.innerHTML = `Incorrect guesses: <span>${incorrectGuesses}</span> / <span>${maxGuesses}</span>`;
+};
 
-function showModal(classesNames, hangmanGame, word, status) {
-  const { mainClass, modalBoxClass } = classesNames;
+function updateHint() {
+  quizBox.hint.innerHTML = `Hint: <span>${hint}</span>`;
+};
+
+function keyAction(e) {
+  e.preventDefault();
+
+  if(e?.ctrlKey) {
+    console.log(e);
+  };
+
+  const letter = e.target?.dataset?.letter || e.key.toUpperCase();
+
+  const isContains = word.toUpperCase().includes(letter);
+  const isUsedKey = usedKeys.includes(letter);
+  const checkKey = alphabet.includes(letter);
+
+  if (checkKey && !isUsedKey) {
+    keyboard.forEach((item) => {
+      if (item.dataset.letter === letter) {
+        item.classList.add('key--disabled');
+        item.setAttribute('disabled', true);
+        item.removeEventListener('click', keyAction);
+        usedKeys.push(letter);
+        console.log(letter)
+      };
+    });
+
+    if (isContains) {
+
+      [...word.toUpperCase()].forEach((item, i) => {
+
+        if (item === letter) {
+          quizWord[i].innerText = item;
+          quizWord[i].classList.remove('word-letter--hidden');
+
+          wordLength -= 1;
+
+          if (wordLength < 1) {
+            showModal(true);
+          };
+        };
+      });
+
+    } else {
+      incorrectGuesses += 1;
+      updateGuesses();
+      gallowsBox.gallowsImage.append(createCustomElement({ tag: 'div', tagClass: gallowsImages[incorrectGuesses]?.cls }));
+
+      if (incorrectGuesses === maxGuesses) {
+        showModal(false);
+      };
+    };
+  };
+};
+
+function showModal(status) {
+  isGame = false;
 
   const message = {
     victory: 'victory',
@@ -213,6 +253,7 @@ function showModal(classesNames, hangmanGame, word, status) {
       type: 'click',
       action: function playGameAction(e) {
         e.preventDefault();
+        resetGame();
         startHangmanGame();
       },
     },

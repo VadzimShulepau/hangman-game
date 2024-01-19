@@ -224,7 +224,7 @@ button {
   background-color: var(--key-color-select);
 }
 
-.key--select {
+.key--disabled {
   background-color: var(--key-color-select);
 }
 
